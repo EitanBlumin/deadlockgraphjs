@@ -3,6 +3,7 @@
     var doc = $($.parseXML(xmlString));
 
     self.processes = {}
+    self.processCount = 0;
     doc.find('process').each(function () {
         var id = this.getAttribute('id')
         processes[id] = {
@@ -13,6 +14,7 @@
             name: id,
             type: "process"
         };
+        processCount++;
     });
     var victims = doc.find('victim');
 
@@ -67,49 +69,32 @@
     });
 
     var width = 1200;
-    var height = 1500;
-
+    var height = 1000;
+    var processRadius = 300;
+    
     var color = d3.scale.category20();
-
-    var force = d3.layout.force()
-        .charge(-200)
-        .linkDistance(200)
-        .size([width, height]);
         
     var svg = d3.select('#deadrock').append('svg')
         .attr("width", width)
         .attr("height", height);
 
-    force
-        .nodes(self.nodes)
-        .links(self.links)
-        .start();
-
-
-    var link = svg.selectAll(".link")
-        .data(self.links)
-        .enter().append("line")
-        .attr("class", "link")
-        .style("stroke-width", 1 );
-
-    var node = svg.selectAll(".node")
+    var processNodes = svg.selectAll(".node")
         .data(self.nodes)
         .enter()
         .append("g")
+        .filter(function(d, i){
+            return d.type =="process";
+        })                
         .attr("class", function (x) {
             return "node " + x.type;
         })
-        .call(force.drag);
+        .attr('transform', function(d, i) {
+            d.x = processRadius * Math.cos((180+(360*i/self.processCount))*Math.PI/180) + width/2;
+            d.y = processRadius * Math.sin((180+(360*i/self.processCount))*Math.PI/180) + height/2;
+           return "translate(" + d.x + "," + d.y + ")";
+        });        
 
-    node.filter('.resource')
-        .append("rect")
-        .attr("width", 40)
-        .attr("height", 40)
-        .style("fill", 'white')
-        .style("stroke-width", 2)
-        .style("stroke", "black");
-
-    node.filter('.process')
+    processNodes
         .append("circle")
         .attr("r", 40)
         .style("fill", 'white')
@@ -117,19 +102,58 @@
         .style("stroke", "black");
 
 
-    node.append("text")
-        .text(function (d) { return d.name; });
+    processNodes
+        .append("text")
+        .text(function (d, i) { return d.name; });
 
-    self.tick = function () {
-        link.attr("x1", function (d) { return d.source.x; })
-            .attr("y1", function (d) { return d.source.y; })
-            .attr("x2", function (d) { return d.target.x; })
-            .attr("y2", function (d) { return d.target.y; });
 
-        node.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
-    };
+    var resourceNodes = svg.selectAll(".node")
+        .data(self.nodes)
+        .enter()
+        .append("g")
+        .filter(function(d, i){
+            return d.type =="resource";
+        })                
+        .attr("class", function (x) {
+            return "node " + x.type;
+        })
+        .attr('transform', function(d, i) {
+            d.x = width / 2 - 20;
+            d.y = 400 + 60 * i;
+           return "translate(" + d.x + "," + d.y + ")";
+        });      
 
-    force.on("tick", tick);
+    resourceNodes
+        .append("rect")
+        .attr("width", 40)
+        .attr("height", 40)
+        .style("fill", 'white')
+        .style("stroke-width", 2)
+        .style("stroke", "black")
+
+    resourceNodes
+        .append("text")
+        .text(function (d, i) { return d.name; });
+
+
+    var link = svg.selectAll(".link")
+        .data(self.links)
+        .enter()
+        .append("line")
+        .attr("x1", function(x,i){
+            return x.source.x;
+        })
+        .attr("y1", function(x,i){
+            return x.source.y;
+        })
+        .attr("x2", function(x,i){
+            return x.target.x + 20;
+        })
+        .attr("y2", function(x,i){
+            return x.target.y + 20;
+        })
+        .attr("class", "link")
+        .style("stroke-width", 1 );        
 
     return self;
 };
